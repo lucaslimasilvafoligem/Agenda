@@ -3,7 +3,6 @@ import Util
 import datetime
 from datetime import datetime
 
-
 vali = Util.Validador
 
 # Conectar ao banco de dados (se não existir, ele será criado)
@@ -17,6 +16,7 @@ class Agenda():
         self.conn = sqlite3.connect('atividade.db')
         self.cursor = self.conn.cursor()    
         
+        # Criar tabela para armazenar as atividades, caso não exista
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS atividade (
                 id INTEGER PRIMARY KEY,
@@ -26,77 +26,64 @@ class Agenda():
             )
         ''')
 
-    # Criar tabela para armazenar as atividades
-
-
     def adicionar_atividade(self, titulo, descricao, data):
         if (
             vali.validarString(titulo) and
-            vali.validarString(descricao)
+            vali.validarString(descricao) and
+            vali.validarData(data)
         ):
+            data = datetime.strptime(str(data), '%Y-%m-%d').date()
             self.cursor.execute('INSERT INTO atividade (titulo, descricao, data) VALUES (?, ?, ?)', (titulo, descricao, data))
-            print("Criado")
-            self.conn.commit()
-        elif (
-            vali.validarString(titulo) and
-            vali.validarString(descricao)
-        ):
-            data = data.today()
-            self.cursor.execute('INSERT INTO atividade (titulo, descricao, data) VALUES (?, ?, ?)', (titulo, descricao, data.strftime("%Y-%m-%d")))
             print("Criado")
             self.conn.commit()
         else: raise ValueError("parametro inválido na criação da atividade") 
 
     def atualizar_atividade(self, id, novoTitulo, novaDescricao, novaData):
         if (
-            isinstance(novaData, datetime.date) and
             vali.validarId(id) and
             vali.validarString(novoTitulo) and
-            vali.validarString(novaDescricao)
+            vali.validarString(novaDescricao) and
+            vali.validarData(novaData)
         ):
-            self.cursor.execute("UPDATE atividades SET titulo = ?, descricao = ?, data = ? WHERE id = ?", (novoTitulo, novaDescricao, novaData.strftime("%Y-%m-%d"), id))
-            print("Atualizado")
-            self.conn.commit()
-        elif (
-            vali.validarId(id) and
-            vali.validarString(novoTitulo) and
-            vali.validarString(novaDescricao)
-        ):
-            self.cursor.execute("UPDATE atividades SET titulo = ?, descricao = ?, data = ? WHERE id = ?", (novoTitulo, novaDescricao, novaData, id))
+            novaData = datetime.strptime(str(novaData), '%Y-%m-%d').date()
+            self.cursor.execute('UPDATE atividade SET titulo = ?, descricao = ?, data = ? WHERE id = ?', (novoTitulo, novaDescricao, novaData, id))
             print("Atualizado")
             self.conn.commit()
         else: raise ValueError("parametro inválido na atualização da atividade")
 
     def deletar_atividade_id(self, id):
         if (vali.validarId(id)):
-            self.cursor.execute("DELETE FROM atividade WHERE id = ?", (id,))
+            self.cursor.execute('DELETE FROM atividade WHERE id = ?', (id,))
             print("Deletado")
             self.conn.commit()
         else: raise ValueError("Id inválido")
 
     def deletar_atividade_data(self, data):
-            print(datetime.strptime(data, "%Y-%m-%d").replace(hour=0, minute=0, second=0,))
-            self.cursor.execute("DELETE FROM atividade a WHERE a.data = ?", (datetime.strptime(data, "%Y-%m-%d").replace(hour=0, minute=0, second=0,)))
+        if(vali.validarData(data)):
+            self.cursor.execute('DELETE FROM atividade a WHERE a.data = ?', (datetime.strptime(data, "%Y-%m-%d")))
             print("Deletado")
             self.conn.commit()
 
     def deletar_atividade_titulo_data(self, titulo, data):
-        if (vali.validarString(titulo) and isinstance(data, datetime.date)):
-            self.cursor.execute("DELETE FROM atividade a WHERE a.data = ? and a.titulo = ?", (data.strftime("%Y-%m-%d"), titulo))
-            print("Deletado")
-            self.conn.commit()
-        elif (
-            vali.validarString(titulo)
-        ):
-            self.cursor.execute("DELETE FROM atividade a WHERE a.data = ? and a.titulo = ?", (data, titulo))
+        if (vali.validarString(titulo and vali.validarData(data))):
+            self.cursor.execute('DELETE FROM atividade a WHERE a.data = ? and a.titulo = ?', (data, titulo))
             print("Deletado")
             self.conn.commit()
         else: raise ValueError("Parametro nválido para a exclusão")
 
+    def deletar_todas_as_atividades(self):
+            self.cursor.execute("DELETE FROM atividade")
+            self.conn.commit()
+
     def exibir_atividades_data(self, data):
-            data = datetime.strptime(str(data), "%Y-%m-%d").replace(hour=0, minute=0, second=0,)
-            self.cursor.execute("SELECT * FROM atividade WHERE data = ?", (data,))
-            return self.cursor.fetchall()
+        data = datetime.strptime(str(data), "%Y-%m-%d")
+        self.cursor.execute('SELECT * FROM atividade WHERE data = ?', (data,))
+        return self.cursor.fetchall()
+
+    def exibir_atividades_anteriores(self, data):
+        data = datetime.strptime(str(data), "%Y-%m-%d")
+        self.cursor.execute('SELECT * FROM atividade WHERE data < ?;', (data,))
+        return self.cursor.fetchall()
 
     def exibir_atividades(self):
         self.cursor.execute('SELECT * FROM atividade')
@@ -104,7 +91,7 @@ class Agenda():
     
     def menu(self):
         while True:
-            print("\n===== Menu de Opções =====")
+            print("\n======== Menu de Opções ========")
             print("1. Adicionar Atividade")
             print("2. Atualizar Atividade")
             print("3. Listar Todas As Atividades")
@@ -119,37 +106,23 @@ class Agenda():
                 titulo = input("Digite o título da atividade: ")
                 descricao = input("Digite a descrição da atividade: ")
                 data = input("Digite a data da atividade (YYYY-MM-DD): ")
-                self.adicionar_atividade(titulo, descricao, datetime.strptime(data, '%Y-%m-%d'))
+                self.adicionar_atividade(titulo, descricao, data)
+                self.conn.close()
             elif opcao == '2':
+                id = int(input("Digite o id: "))
                 titulo = input("Digite o título da atividade: ")
                 descricao = input("Digite a descrição da atividade: ")
                 data = input("Digite a data da atividade (YYYY-MM-DD): ")
-                self.adicionar_atividade(titulo, descricao, datetime.strptime(data, '%Y-%m-%d'))
+                self.atualizar_atividade(id, titulo, descricao, data)
             elif opcao == '3':
                 atividades = self.exibir_atividades()
-                if atividades:
-                    print("\n===== Atividades =====")
-                    for atividade in atividades:
-                        print("ID:", atividade[0])
-                        print("Título:", atividade[1])
-                        print("Descrição:", atividade[2])
-                        print("Data:", atividade[3])
-                        print("--------------------------")
-                else:
-                    print("Nenhuma atividade encontrada.")
+                if (len(atividades) > 0):
+                    print(self.formatar_saida(atividades))
             elif opcao == '4':
                 data = input("Digite a data da atividade (YYYY-MM-DD): ")
                 atividades = self.exibir_atividades_data(data)
-                if atividades:
-                    print("\n===== Atividades =====")
-                    for atividade in atividades:
-                        print("ID:", atividade[0])
-                        print("Título:", atividade[1])
-                        print("Descrição:", atividade[2])
-                        print("Data:", atividade[3])
-                        print("--------------------------")
-                else:
-                    print("Nenhuma atividade encontrada.")
+                if (len(atividades) > 1):
+                    print(self.formatar_saida(atividades))
             elif opcao == '5':
                 id = int(input("Digite o Id: "))
                 self.deletar_atividade_id(id)
@@ -158,20 +131,19 @@ class Agenda():
                 data = input("Digite a data da atividade (YYYY-MM-DD): ")
                 self.deletar_atividade_titulo_data(titulo, data)
             elif opcao == '7':
-                conn.close() # fechar a conexão
+                self.conn.close() # fechar a conexão
                 print("Saindo...")
                 break
             else:
                 print("Opção inválida. Por favor, escolha uma opção válida.")
+                
+    def formatar_saida(self, compromissos):
+        if (len(compromissos) > 0):
+            saida ="\n======== Atividades ========"
+            for atividade in compromissos:
+                saida+= "\n Id:" + str(atividade[0]) + "\nTítulo: " + atividade[1] + "\nDescrição: " + atividade[2] + "\nData: " + str(atividade[3]) + "\n---------------------------------------"
+        else: saida ="Não há Atividades"
+        return saida
     
-    # Adicione funções semelhantes para atualizar e excluir atividades
-    # Exemplo de uso:
-    """
-    adicionar_atividade('Estudar Python', 'Ler capítulo 5 do livro', '2024-03-02')
-    adicionar_atividade('Fazer exercícios', 'Resolver exercícios de listas', '2024-03-03')
-
-    print(exibir_atividades())
-    """
 def instancia():
     return Agenda()
-

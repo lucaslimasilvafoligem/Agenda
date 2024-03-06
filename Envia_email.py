@@ -3,8 +3,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 def enviar_email(destinatario, assunto, corpo):
-    email_enviar = 'bazinga2112br@gmail.com'
-    senha = 'sua senha'
+    email_enviar = 'SEU EMAIL'
+    senha = 'SUA SENHA'
 
     msg = MIMEMultipart()
     msg['From'] = email_enviar

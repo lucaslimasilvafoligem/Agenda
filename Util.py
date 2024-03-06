@@ -34,14 +34,16 @@ class DataUtil:
     def proximo_mes(data):
         return data.day(0) + timedelta(moth=1) 
 
-
-
 class Validador:
 
     @staticmethod
     def validarString(string):
-        return string != None and string.replace(" ", "") != ""
+        return string is not None and isinstance(string, str) and string.replace(" ", "") != ""
     
     @staticmethod
     def validarId(id):
-        return id != None and isinstance(id, int) and id > 0
+        return id is not None and isinstance(id, int) and id > 0
+    
+    @staticmethod
+    def validarData(data):
+        return data is not None and (isinstance(data, datetime) or (isinstance(data, str) and re.compile(r'^\d{4}-\d{2}-\d{2}$')))
